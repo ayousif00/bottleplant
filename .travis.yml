@@ -1,6 +1,4 @@
 install: true
-install:
-  - pip install coveralls
 script:
   - eval "$(ssh-agent -s)" #start the ssh agent
   - echo -e $RESIN_DEPLOY_KEY > id_rsa
@@ -9,6 +7,3 @@ script:
   - cat resinkey >> ~/.ssh/known_hosts
   - git remote add resin $RESIN_REMOTE
   - git push resin master
-  - coverage run --source=resin_bluemix.py test
-after_success:
-  coveralls
