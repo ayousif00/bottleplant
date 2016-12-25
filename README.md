@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/ayousif00/bottleplant.png?label=ready&title=Ready)](https://waffle.io/ayousif00/bottleplant)
 # bottleplant
 A Resin.io powered digital logging system for a Bottle Plant
 
