@@ -3,6 +3,9 @@ python:
   - "3.5"
 install:
   - pip install -U pip
+  - python setup.py develop
+before_script:
+  - py.test resin_bluemix.py
 script:
   - eval "$(ssh-agent -s)" #start the ssh agent
   - echo -e $RESIN_DEPLOY_KEY > id_rsa
