@@ -4,8 +4,6 @@ python:
 install:
   - pip install -U pip
   - pip install coveralls
-before_script:
-  - py.test resin_bluemix.py
 script:
   - eval "$(ssh-agent -s)" #start the ssh agent
   - echo -e $RESIN_DEPLOY_KEY > id_rsa
