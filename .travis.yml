@@ -4,7 +4,6 @@ python:
 install:
   - pip install -U pip
   - pip install coveralls
-  - python setup.py develop
 before_script:
   - py.test resin_bluemix.py
 script:
