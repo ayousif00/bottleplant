@@ -12,5 +12,6 @@ script:
   - cat resinkey >> ~/.ssh/known_hosts
   - git remote add resin $RESIN_REMOTE
   - git push resin master
+  - coverage run --source=moscowdjango,meetup resin_bluemix.py test
 after_success:
   - coveralls
