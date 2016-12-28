@@ -4,6 +4,10 @@ python:
 install:
   - pip install -U pip
   - pip install codecov
+  - pip install pytest
+  - pip install pytest-cov
+  - pip install codecov
+  - pip install coverage
 script:
   - eval "$(ssh-agent -s)" #start the ssh agent
   - echo -e $RESIN_DEPLOY_KEY > id_rsa
@@ -12,7 +16,6 @@ script:
   - cat resinkey >> ~/.ssh/known_hosts
   - git remote add resin $RESIN_REMOTE
   - git push resin master
-  - coverage run tests.py
+  - coverage run tests.py test
 after_success:
-  - coverage combine
   - codecov
