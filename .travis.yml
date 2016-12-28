@@ -16,6 +16,6 @@ script:
   - cat resinkey >> ~/.ssh/known_hosts
   - git remote add resin $RESIN_REMOTE
   - git push resin master
-  - coverage run tests.py test
+  - python -m pytest tests.py
 after_success:
   - codecov
