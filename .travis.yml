@@ -14,4 +14,5 @@ script:
   - git push resin master
   - coverage run tests.py
 after_success:
+  - coverage combine
   - codecov
