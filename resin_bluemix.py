@@ -1,59 +1,80 @@
-import time
-import random
-import json
-import requests
-from requests.auth import HTTPBasicAuth
-from config import JWT, bluemix_api_key, bluemix_api_token, organization, device_type, resin_device_uuid
+"""
+Glue for IBM Bluemix IoT and resin.io
+"""
+import os
 
+from resin import Resin
+import ibmiotf.application
 
-def get_resin_device(uuid):
-    # Gets device resource from resin
-    url = "https://api.resin.io/ewa/device?$filter=uuid%20eq%20'" + uuid + "'"
-    headers = {'Content-type': 'application/json',
-               'Authorization': 'Bearer ' + JWT}
-    r = requests.get(url, headers=headers)
-    if r.status_code == 200:
-        resin_device = r.json()['d'][0]
-        print "This is a resin device with name: " + resin_device['name'] + 'and ID: ' + str(resin_device['id'])
-        return resin_device
+def register(resinio_auth_token):
+    """Register a device to IBM Bluemix
+
+    Input:
+    resinio_auth_token: authentication token from the user dashboard/preferences
+
+    Output:
+    device_id: the device id, new if just registered, existing if already has such device
+    device_token: authentication token, new if just registered, from env vars if exists
+    """
+    resin = Resin()
+    uuid = os.getenv("RESIN_DEVICE_UUID")
+    resin.auth.login_with_token(resinio_auth_token)
+    device = resin.models.device.get(uuid)
+
+    # Information to add to Bluemix about the device
+    device_id = device["name"]
+    machine = device["device_type"]
+    resinos = device["os_version"]
+    location = device["location"]
+
+    # Device registration data
+    device_type_id = os.getenv("BLUEMIX_DEVICE_TYPE")
+    device_info = {"model": machine,
+                   "fwVersion": resinos,
+                   "descriptiveLocation": location
+                  }
+    # Bluemx API login
+    try:
+        service_options = {"org": os.getenv("BLUEMIX_ORG"),
+                           "id": "DeviceRegistration",
+                           "auth-method": "apikey",
+                           "auth-key": os.getenv("BLUEMIX_API_KEY"),
+                           "auth-token": os.getenv("BLUEMIX_API_TOKEN")
+                          }
+        service = ibmiotf.application.Client(service_options)
+    except ibmiotf.ConnectionException:
+        raise
+
+    # Device registration and environmental setup
+    try:
+        r = service.api.registerDevice(typeId=device_type_id, deviceId=device_id, deviceInfo=device_info)
+        device_token = r["authToken"]
+
+        create_or_update_env(resin, uuid, "BLUEMIX_DEVICE_ID", device_id)
+        create_or_update_env(resin, uuid, "BLUEMIX_DEVICE_TOKEN", device_token)
+    except ibmiotf.APIException as e:
+        if e.httpCode == 403:
+            print("Device '{}' is already registered".format(device_id))
+            device_token = os.getenv("BLUEMIX_DEVICE_TOKEN")
+        else:
+            raise
+    return device_id, device_token
+
+def create_or_update_env(resinapi, uuid, name, value):
+    """Check if a given device environmental variable already exists for this device,
+    if it does, update it with 'value', otherwise create it
+
+    Input:
+    resinapi: authenticated resin connection
+    uuid: device UUID
+    name: variable name
+    value: variable value to set or update to
+    """
+    if os.getenv(name, None):
+        envvars = resinapi.models.environment_variables.device.get_all(uuid)
+        for envvar in envvars:
+            if envvar["env_var_name"] == name:
+                resinapi.models.environment_variables.device.update(envvar["id"], value)
+                break
     else:
-        print 'Error connecting to resin.io api, response code ' + str(r.status_code)
-
-
-def create_device_envar(device_id, key, value):
-    # Creates device envar for bluemix device credentials, allowing config to
-    # persist threw updates
-    url = "https://api.resin.io/ewa/device_environment_variable"
-    data = {
-        "device": device_id,
-        "env_var_name": key,
-        "value": value
-    }
-    headers = {'Content-type': 'application/json',
-               'Authorization': 'Bearer ' + str(JWT)}
-    r = requests.post(url, data=json.dumps(data), headers=headers)
-    if r.status_code == 201:
-        print "New device envar - " + str(key) + ":" + str(value) + " successfully created"
-    else:
-        print 'Error creating resin.io envar ' + str(key) + ', response code ' + str(r.status_code)
-
-
-def register(device):
-    # registers device with bluemix using resin device ID
-    url = "https://" + str(organization) + \
-        ".internetofthings.ibmcloud.com/api/v0001/devices"
-    data = {
-        "type": device_type,
-        "id": device['id'],
-        "metadata": {
-            "address": {
-                "number": 29,
-                "street": "Acacia Road"
-            }
-        }
-    }
-    headers = {'Content-type': 'application/json'}
-
-    r = requests.post(url, data=json.dumps(
-        data), headers=headers, auth=HTTPBasicAuth(bluemix_api_key, bluemix_api_token))
-    return r
+        resinapi.models.environment_variables.device.create(uuid, name, value)
