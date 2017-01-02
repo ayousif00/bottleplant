@@ -1,3 +1,0 @@
--e git://github.com/ibm-watson-iot/iot-python.git#egg=ibmiotf
-click
-terminaltables
